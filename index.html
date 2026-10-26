@@ -1,0 +1,450 @@
+<title>Procesador BD Olímpica</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root {
+  --bg: #f8f7f5;
+  --surface: #ffffff;
+  --border: #e2e0db;
+  --fg: #1a1917;
+  --fg2: #6b6860;
+  --accent: #c8402a;
+  --accent-light: #fdf1ef;
+  --success: #1e7a4a;
+  --success-light: #edf7f2;
+  --warning: #b85c00;
+  --warning-light: #fff7ed;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141312;
+    --surface: #1f1e1c;
+    --border: #2e2c29;
+    --fg: #f0ede8;
+    --fg2: #9a9690;
+    --accent: #e05840;
+    --accent-light: #2a1a17;
+    --success: #34c47a;
+    --success-light: #0f2a1c;
+    --warning: #f08030;
+    --warning-light: #2a1800;
+    --shadow: 0 1px 3px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.2);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141312; --surface: #1f1e1c; --border: #2e2c29;
+  --fg: #f0ede8; --fg2: #9a9690; --accent: #e05840;
+  --accent-light: #2a1a17; --success: #34c47a; --success-light: #0f2a1c;
+  --warning: #f08030; --warning-light: #2a1800;
+  --shadow: 0 1px 3px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.2);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px;
+}
+
+.container { max-width: 680px; margin: 0 auto; }
+
+header { margin-bottom: 36px; }
+.logo { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.logo-mark {
+  width: 36px; height: 36px; background: var(--accent);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 700; font-size: 14px; letter-spacing: -.5px; flex-shrink: 0;
+}
+h1 { font-size: 20px; font-weight: 700; color: var(--fg); }
+.subtitle { font-size: 14px; color: var(--fg2); margin-top: 2px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  position: relative;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+.drop-zone input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.drop-icon { font-size: 32px; margin-bottom: 10px; }
+.drop-title { font-size: 15px; font-weight: 600; color: var(--fg); margin-bottom: 4px; }
+.drop-hint { font-size: 13px; color: var(--fg2); }
+.file-selected {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--success-light); border-radius: 8px;
+  padding: 12px 16px; margin-top: 12px;
+}
+.file-selected svg { flex-shrink: 0; color: var(--success); }
+.file-name { font-size: 14px; font-weight: 500; color: var(--fg); }
+.file-size { font-size: 12px; color: var(--fg2); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 24px; border-radius: 8px; font-size: 15px; font-weight: 600;
+  cursor: pointer; border: none; transition: opacity .15s, transform .1s;
+  width: 100%; margin-top: 16px;
+}
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { opacity: .9; }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+.progress-wrap { margin-top: 16px; display: none; }
+.progress-label { font-size: 13px; color: var(--fg2); margin-bottom: 6px; display: flex; justify-content: space-between; }
+.progress-bar-bg { background: var(--border); border-radius: 999px; height: 6px; overflow: hidden; }
+.progress-bar { background: var(--accent); height: 100%; border-radius: 999px; width: 0%; transition: width .2s; }
+
+.summary { display: none; }
+.summary-title {
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--fg2); margin-bottom: 14px;
+}
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.stat { background: var(--bg); border-radius: 8px; padding: 12px 14px; }
+.stat-val { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--fg); line-height: 1.1; }
+.stat-lbl { font-size: 12px; color: var(--fg2); margin-top: 2px; }
+.stat.accent .stat-val { color: var(--accent); }
+.stat.success .stat-val { color: var(--success); }
+
+.downloads { display: flex; flex-direction: column; gap: 8px; }
+.dl-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; transition: border-color .15s, background .15s;
+  font-size: 14px; font-weight: 500; color: var(--fg); text-decoration: none;
+}
+.dl-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+.dl-btn-left { display: flex; align-items: center; gap: 10px; }
+.dl-tag {
+  font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.tag-txt { background: var(--warning-light); color: var(--warning); }
+.tag-xls { background: var(--success-light); color: var(--success); }
+.dl-size { font-size: 12px; color: var(--fg2); }
+
+.error-box {
+  display: none; background: #fff0ee; border: 1px solid #f5c4bc;
+  border-radius: 8px; padding: 14px 16px; font-size: 14px; color: #8b2016;
+  margin-top: 12px;
+}
+:root[data-theme="dark"] .error-box,
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .error-box {
+  background: var(--accent-light); border-color: #4a1f18; color: #f09080;
+}}
+
+.reset-btn {
+  margin-top: 12px; background: none; border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 14px; font-size: 13px; color: var(--fg2);
+  cursor: pointer; transition: border-color .15s;
+}
+.reset-btn:hover { border-color: var(--fg2); }
+
+footer { text-align: center; font-size: 12px; color: var(--fg2); margin-top: 32px; }
+</style>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-mark">PO</div>
+      <h1>Procesador BD Olímpica</h1>
+    </div>
+    <p class="subtitle">Puntos Olímpica — Depuración semanal de base de datos</p>
+  </header>
+
+  <div class="card">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".txt,.zip">
+      <div class="drop-icon">📂</div>
+      <div class="drop-title">Arrastra el archivo aquí</div>
+      <div class="drop-hint">o haz clic para seleccionar — .txt o .zip</div>
+    </div>
+    <div class="file-selected" id="fileSelected" hidden>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      <div>
+        <div class="file-name" id="fileName"></div>
+        <div class="file-size" id="fileSize"></div>
+      </div>
+    </div>
+    <div class="error-box" id="errorBox"></div>
+    <button class="btn btn-primary" id="processBtn" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>
+      Procesar archivo
+    </button>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-label"><span id="progressLabel">Procesando...</span><span id="progressPct">0%</span></div>
+      <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+    </div>
+  </div>
+
+  <div class="card summary" id="summaryCard">
+    <div class="summary-title">Resumen del proceso</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-val" id="sRecibidos">—</div><div class="stat-lbl">Registros recibidos</div></div>
+      <div class="stat"><div class="stat-val" id="sNoNum">—</div><div class="stat-lbl">Descartados no numéricos</div></div>
+      <div class="stat success"><div class="stat-val" id="sBase">—</div><div class="stat-lbl">Registros base únicos</div></div>
+      <div class="stat"><div class="stat-val" id="s999">—</div><div class="stat-lbl">Registros 999 agregados</div></div>
+      <div class="stat"><div class="stat-val" id="sOverflow">—</div><div class="stat-lbl">Descartados overflow</div></div>
+      <div class="stat accent"><div class="stat-val" id="sTotal">—</div><div class="stat-lbl">Total único TXT</div></div>
+      <div class="stat"><div class="stat-val" id="sParte1">—</div><div class="stat-lbl">Excel Parte1 (filas)</div></div>
+      <div class="stat"><div class="stat-val" id="sParte2">—</div><div class="stat-lbl">Excel Parte2 (filas)</div></div>
+    </div>
+    <div class="summary-title" style="margin-top:4px">Descargas</div>
+    <div class="downloads" id="downloads"></div>
+    <button class="reset-btn" id="resetBtn">← Procesar otro archivo</button>
+  </div>
+
+  <footer>Puntos Olímpica · Uso interno</footer>
+</div>
+
+<script>
+const fmt = n => n.toLocaleString('es-CO');
+const fmtBytes = b => b < 1024*1024 ? (b/1024).toFixed(0)+' KB' : (b/1024/1024).toFixed(1)+' MB';
+
+let selectedFile = null;
+let results = {};
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileSelected = document.getElementById('fileSelected');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const processBtn = document.getElementById('processBtn');
+const progressWrap = document.getElementById('progressWrap');
+const progressBar = document.getElementById('progressBar');
+const progressLabel = document.getElementById('progressLabel');
+const progressPct = document.getElementById('progressPct');
+const summaryCard = document.getElementById('summaryCard');
+const errorBox = document.getElementById('errorBox');
+
+function setFile(file) {
+  selectedFile = file;
+  fileName.textContent = file.name;
+  fileSize.textContent = fmtBytes(file.size);
+  fileSelected.hidden = false;
+  processBtn.disabled = false;
+  errorBox.style.display = 'none';
+}
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = 'block';
+  processBtn.disabled = false;
+  progressWrap.style.display = 'none';
+}
+
+function setProgress(pct, label) {
+  progressBar.style.width = pct + '%';
+  progressPct.textContent = pct + '%';
+  if (label) progressLabel.textContent = label;
+}
+
+async function readTxtFromFile(file) {
+  if (file.name.toLowerCase().endsWith('.zip')) {
+    const zip = await JSZip.loadAsync(file);
+    const txts = Object.keys(zip.files).filter(n => n.toLowerCase().endsWith('.txt'));
+    if (!txts.length) throw new Error('No se encontró un .txt dentro del ZIP.');
+    return await zip.files[txts[0]].async('string');
+  }
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = () => rej(new Error('No se pudo leer el archivo.'));
+    r.readAsText(file, 'windows-1252');
+  });
+}
+
+// Fix E/F columns
+function fixEF(e, f) {
+  const letters = e.replace(/[^A-Za-z]/g, '');
+  const leftover = e.replace(/[A-Za-z\s]/g, '');
+  return [letters, leftover + f];
+}
+
+processBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  processBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  summaryCard.style.display = 'none';
+  errorBox.style.display = 'none';
+  setProgress(0, 'Leyendo archivo...');
+
+  try {
+    const text = await readTxtFromFile(selectedFile);
+    setProgress(15, 'Procesando registros...');
+
+    const COLS = [[0,15],[30,57],[60,74],[168,179],[335,340],[341,344]];
+    const pattern04 = /04|(?<!\d)4(?!\d)/;
+
+    const seen = new Set();
+    const txtResults = [];
+    let discardedNonNum = 0, discardedOverflow = 0, dupCount = 0;
+    const allRows = [];
+
+    const lines = text.split('\n');
+    const total = lines.length;
+    let processed = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].replace(/\r$/, '');
+      if (line.length < 343) { processed++; continue; }
+
+      const col1Raw = line.substring(0, 15).trim();
+      const penultima = line.substring(331, 343);
+
+      if (!/^\d+$/.test(col1Raw)) {
+        discardedNonNum++;
+      } else {
+        const col1Padded = col1Raw.padStart(15, '0');
+        if (!seen.has(col1Padded)) { seen.add(col1Padded); txtResults.push(col1Padded); }
+        if (pattern04.test(penultima)) {
+          dupCount++;
+          const col1Unpadded = col1Raw.replace(/^0+/, '') || '0';
+          const newVal = '999' + col1Unpadded;
+          if (newVal.length <= 15) {
+            const newPadded = newVal.padStart(15, '0');
+            if (!seen.has(newPadded)) { seen.add(newPadded); txtResults.push(newPadded); }
+          } else { discardedOverflow++; }
+        }
+      }
+
+      // Parse row for Excel
+      const row = COLS.map(([s,e]) => line.length >= e ? line.substring(s,e).trim() : '');
+      const num = parseInt(row[0]);
+      if (!isNaN(num)) row[0] = num;
+      [row[4], row[5]] = fixEF(row[4], row[5]);
+      allRows.push(row);
+
+      processed++;
+      if (i % 50000 === 0) {
+        const pct = Math.round(15 + (processed / total) * 55);
+        setProgress(pct, 'Procesando registros...');
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    setProgress(70, 'Generando TXT...');
+    await new Promise(r => setTimeout(r, 0));
+
+    // TXT blob
+    const txtContent = txtResults.join('\n') + '\n';
+    const txtBlob = new Blob([txtContent], { type: 'text/plain' });
+
+    setProgress(75, 'Generando Excel Parte1...');
+    await new Promise(r => setTimeout(r, 0));
+
+    const mid = Math.floor(allRows.length / 2);
+
+    // Excel Parte1
+    const wb1 = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.aoa_to_sheet(allRows.slice(0, mid));
+    XLSX.utils.book_append_sheet(wb1, ws1, 'Parte1');
+    const xls1 = XLSX.write(wb1, { bookType: 'xlsx', type: 'array' });
+    const blob1 = new Blob([xls1], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    setProgress(88, 'Generando Excel Parte2...');
+    await new Promise(r => setTimeout(r, 0));
+
+    // Excel Parte2
+    const wb2 = XLSX.utils.book_new();
+    const ws2 = XLSX.utils.aoa_to_sheet(allRows.slice(mid));
+    XLSX.utils.book_append_sheet(wb2, ws2, 'Parte2');
+    const xls2 = XLSX.write(wb2, { bookType: 'xlsx', type: 'array' });
+    const blob2 = new Blob([xls2], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    setProgress(100, '¡Listo!');
+
+    const baseName = selectedFile.name.replace(/\.(zip|txt)$/i, '');
+    const baseNum = allRows.length;
+    const baseUniq = txtResults.filter(r => !r.startsWith('999')).length;
+    const added999 = dupCount - discardedOverflow;
+
+    // Update summary
+    document.getElementById('sRecibidos').textContent = fmt(baseNum);
+    document.getElementById('sNoNum').textContent = fmt(discardedNonNum);
+    document.getElementById('sBase').textContent = fmt(baseUniq);
+    document.getElementById('s999').textContent = fmt(added999);
+    document.getElementById('sOverflow').textContent = fmt(discardedOverflow);
+    document.getElementById('sTotal').textContent = fmt(txtResults.length);
+    document.getElementById('sParte1').textContent = fmt(mid);
+    document.getElementById('sParte2').textContent = fmt(baseNum - mid);
+
+    // Downloads
+    const dlContainer = document.getElementById('downloads');
+    dlContainer.innerHTML = '';
+
+    const files = [
+      { blob: txtBlob, name: baseName + '_DEPURADO.txt', tag: 'TXT', tagClass: 'tag-txt' },
+      { blob: blob1, name: baseName + '_Parte1.xlsx', tag: 'XLS', tagClass: 'tag-xls' },
+      { blob: blob2, name: baseName + '_Parte2.xlsx', tag: 'XLS', tagClass: 'tag-xls' },
+    ];
+
+    files.forEach(({ blob, name, tag, tagClass }) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.className = 'dl-btn';
+      a.innerHTML = `
+        <div class="dl-btn-left">
+          <span class="dl-tag ${tagClass}">${tag}</span>
+          <span>${name}</span>
+        </div>
+        <span class="dl-size">${fmtBytes(blob.size)}</span>`;
+      dlContainer.appendChild(a);
+    });
+
+    summaryCard.style.display = 'block';
+    progressWrap.style.display = 'none';
+
+  } catch (err) {
+    showError('Error: ' + err.message);
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  selectedFile = null;
+  fileInput.value = '';
+  fileSelected.hidden = true;
+  processBtn.disabled = true;
+  summaryCard.style.display = 'none';
+  progressWrap.style.display = 'none';
+  errorBox.style.display = 'none';
+  setProgress(0, 'Procesando...');
+});
+</script>
