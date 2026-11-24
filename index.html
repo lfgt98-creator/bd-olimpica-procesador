@@ -283,7 +283,7 @@ processBtn.addEventListener('click', async () => {
     document.getElementById('dlName').textContent = outName;
     document.getElementById('dlSize').textContent = fmtBytes(blob.size);
 
-    const baseUniq = results.filter(r => !r.startsWith('999')).length;
+    const baseUniq = results.filter(r => !r.replace(/^0+/, '').startsWith('999')).length;
     const added999 = results.length - baseUniq;
 
     document.getElementById('sRecibidos').textContent = fmt(totalLines);
